@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"mime"
 	"net/http"
 	"os"
 
@@ -49,14 +50,21 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 	mediaType := fileHeader.Header.Get("Content-Type")
 
 	fileExtensions := map[string]string{
-		"image/jpeg":    ".jpg",
-		"image/png":     ".png",
-		"image/gif":     ".gif",
-		"image/webp":    ".webp",
-		"image/svg+xml": ".svg",
+		"image/jpeg": ".jpg",
+		"image/png":  ".png",
 	}
 
-	fileExtension, ok := fileExtensions[mediaType]
+	mimeType, _, err := mime.ParseMediaType(mediaType)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Unsupported media type", err)
+		return
+	}
+	if mimeType != "image/jpeg" && mimeType != "image/png" && mimeType != "image/gif" && mimeType != "image/webp" && mimeType != "image/svg+xml" {
+		respondWithError(w, http.StatusBadRequest, "Unsupported media type", nil)
+		return
+	}
+
+	fileExtension, ok := fileExtensions[mimeType]
 	if !ok {
 		respondWithError(w, http.StatusBadRequest, "Unsupported media type", nil)
 		return
