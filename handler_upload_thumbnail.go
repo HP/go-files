@@ -1,10 +1,10 @@
 package main
 
 import (
-	"encoding/base64"
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 
 	"github.com/bootdotdev/learn-file-storage-s3-golang-starter/internal/auth"
 	"github.com/google/uuid"
@@ -47,14 +47,33 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 	}
 	defer formFile.Close()
 	mediaType := fileHeader.Header.Get("Content-Type")
-	imageBytes, err := io.ReadAll(formFile)
-	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "Couldn't read thumbnail file", err)
-		return
+
+	fileExtensions := map[string]string{
+		"image/jpeg":    ".jpg",
+		"image/png":     ".png",
+		"image/gif":     ".gif",
+		"image/webp":    ".webp",
+		"image/svg+xml": ".svg",
 	}
 
-	imageStr := base64.StdEncoding.EncodeToString(imageBytes)
-	imageDataURL := "data:" + mediaType + ";base64," + imageStr
+	fileExtension, ok := fileExtensions[mediaType]
+	if !ok {
+		respondWithError(w, http.StatusBadRequest, "Unsupported media type", nil)
+		return
+	}
+	filePath := cfg.assetsRoot + "/" + videoID.String() + fileExtension
+	file, err := os.Create(filePath)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Couldn't create file", err)
+		return
+	}
+	defer file.Close()
+
+	_, err = io.Copy(file, formFile)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Couldn't copy file", err)
+		return
+	}
 
 	video, err := cfg.db.GetVideo(videoID)
 	if err != nil {
@@ -66,8 +85,14 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	cleanFilePath := filePath
+	if len(cleanFilePath) > 0 && cleanFilePath[0] == '.' {
+		cleanFilePath = cleanFilePath[1:]
+	}
+	thumbnailURL := "http://localhost:" + cfg.port + cleanFilePath
+
 	nextVideo := video
-	nextVideo.ThumbnailURL = &imageDataURL
+	nextVideo.ThumbnailURL = &thumbnailURL
 
 	err = cfg.db.UpdateVideo(nextVideo)
 	if err != nil {
