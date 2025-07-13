@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"mime"
@@ -69,7 +71,14 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 		respondWithError(w, http.StatusBadRequest, "Unsupported media type", nil)
 		return
 	}
-	filePath := cfg.assetsRoot + "/" + videoID.String() + fileExtension
+	randomBytes := make([]byte, 32)
+	_, err = rand.Read(randomBytes)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Couldn't generate random string", err)
+		return
+	}
+	fileName := hex.EncodeToString(randomBytes)
+	filePath := cfg.assetsRoot + "/" + fileName + fileExtension
 	file, err := os.Create(filePath)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Couldn't create file", err)
