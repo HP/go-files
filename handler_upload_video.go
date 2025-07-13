@@ -84,19 +84,50 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
 		respondWithError(w, http.StatusInternalServerError, "Couldn't seek to start of temp file", err)
 		return
 	}
+
+	processingFileName, err := processVideoForFastStart(tempFile.Name())
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Couldn't process video file", err)
+		return
+	}
+	processingFile, err := os.Open(processingFileName)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Couldn't open processing file", err)
+		return
+	}
+	defer processingFile.Close()
+	defer os.Remove(processingFile.Name())
+
 	randomBytes := make([]byte, 32)
 	_, err = rand.Read(randomBytes)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Couldn't generate random string", err)
 		return
 	}
-	fileName := hex.EncodeToString(randomBytes) + ".mp4"
+
+	aspectRatio, err := getVideoAspectRatio(tempFile.Name())
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Couldn't get video aspect ratio", err)
+		return
+	}
+
+	var folderName string
+	switch aspectRatio {
+	case "16:9":
+		folderName = "landscape"
+	case "9:16":
+		folderName = "portrait"
+	default:
+		folderName = "other"
+	}
+
+	fileName := folderName + "/" + hex.EncodeToString(randomBytes) + ".mp4"
 
 	_, err = cfg.s3Client.PutObject(context.Background(), &s3.PutObjectInput{
 		Bucket:      aws.String(cfg.s3Bucket),
 		Key:         aws.String(fileName),
 		ContentType: aws.String(mediaType),
-		Body:        tempFile,
+		Body:        processingFile,
 	})
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Couldn't upload video file", err)
