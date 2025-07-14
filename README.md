@@ -1,4 +1,4 @@
-# Files storage and CDN with S3 and CloudFront
+# File storage and CDN with S3 and CloudFront
 
 This is a [Boot.dev course](https://www.boot.dev/courses/learn-file-servers-s3-cloudfront-golang) project that I have worked through. A really useful course, it walks you through all the necessary AWS steps to setup a file storage and CDN with S3 and CloudFront. When the steps are provided this is quite easy.
 
