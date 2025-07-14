@@ -17,7 +17,7 @@ What I didn't like:
 How to make it more advanced:
 
 - [Signed urls](https://www.boot.dev/courses/learn-file-servers-s3-cloudfront-golang/lessons/signed-urls) with CloudFront.
-- Upload of videos with presigned put requests directly from the client.
+- Upload of videos with presigned put requests directly from the client to S3.
 - Video processing in the background, or via Lambda functions triggered by S3 events.
 
 My referral link: https://www.boot.dev?bannerlord=hanspetter
